@@ -2,8 +2,5 @@ build
 gradle
 .gradle
 .idea
-user/build
-file/build
-common/build
-server/build
+service/*/build
 server_data

@@ -19,17 +19,6 @@ task("clean") {
     }
 }
 
-val bootWarAll by tasks.registering {
-    group = "application"
-    description = "Builds a WAR archive of all sub-projects."
-
-    childProjects["service"]?.subprojects?.forEach {
-        dependsOn(it.tasks.getByName("bootWar"))
-    }
-}
-
-extra["springCloudVersion"] = "2022.0.1"
-
 plugins {
     id("org.springframework.boot") version "3.0.2" apply false
     id("io.spring.dependency-management") version "1.1.0" apply false
@@ -47,7 +36,7 @@ subprojects {
     plugins.apply("org.jetbrains.kotlin.jvm")
     plugins.apply("org.jetbrains.kotlin.plugin.spring")
 
-    this.repositories {
+    repositories {
         mavenCentral()
         maven { url = uri("https://artifactory-oss.prod.netflix.net/artifactory/maven-oss-candidates") }
     }
@@ -57,5 +46,13 @@ subprojects {
             freeCompilerArgs = listOf("-Xjsr305=strict")
             jvmTarget = "17"
         }
+    }
+
+    dependencies {
+        add("implementation", "org.jetbrains.kotlin:kotlin-reflect")
+        add("implementation", "org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+        add("implementation", "com.fasterxml.jackson.module:jackson-module-kotlin")
+        add("implementation", "io.projectreactor.kotlin:reactor-kotlin-extensions")
+        add("implementation", "org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
     }
 }
