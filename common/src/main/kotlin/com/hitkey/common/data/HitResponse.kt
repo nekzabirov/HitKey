@@ -1,4 +1,4 @@
-package com.hitkey.common
+package com.hitkey.common.data
 
 sealed class HitResponse(val success: Boolean) {
     data class OK<T>(

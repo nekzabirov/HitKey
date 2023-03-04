@@ -1,7 +1,6 @@
 package com.hitkey.file.controller
 
-import com.hitkey.common.HitResponse
-import com.hitkey.file.config.ParamIsRequired
+import com.hitkey.common.config.ParamIsRequired
 import com.hitkey.file.controller.rest.FileRequest
 import com.hitkey.file.service.FileService
 import kotlinx.coroutines.reactor.awaitSingle

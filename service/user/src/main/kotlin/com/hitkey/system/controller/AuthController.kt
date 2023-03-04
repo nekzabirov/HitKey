@@ -1,12 +1,11 @@
 package com.hitkey.system.controller
 
-import com.hitkey.common.HitResponse
-import com.hitkey.system.component.HitCrypto
+import com.hitkey.common.component.HitCrypto
 import com.hitkey.system.controller.rest.*
 import com.hitkey.system.database.entity.user.UserContact
 import com.hitkey.system.exception.EmailAlreadyConfirmed
 import com.hitkey.system.exception.FaultLogin
-import com.hitkey.system.exception.ParamIsRequired
+import com.hitkey.common.config.ParamIsRequired
 import com.hitkey.system.exception.PhoneAlreadyConfirmed
 import com.hitkey.system.service.UserEmailService
 import com.hitkey.system.service.UserPhoneService
@@ -172,7 +171,7 @@ class AuthController {
                 u.next(t)
         }
         .map {
-            crypto.generateAuthToken(it)
+            crypto.generateAuthToken(it.id)
         }
         .map { TokenResponse(it) }
 }

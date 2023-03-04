@@ -1,4 +1,4 @@
-package com.hitkey.system.service
+package com.hitkey.develop.service
 
 import com.hitkey.common.data.HitResponse
 import com.hitkey.common.config.NotFoundException
@@ -36,7 +36,8 @@ class FileService {
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(FileRequest(file))
         .retrieve()
-        .bodyToMono(HitResponse.OK::class.java)
+        .bodyToMono<HitResponse.OK<String>>()
+        .map { it.data }
 
     fun findUserFile(fileID: String) = webClient.get()
         .uri("user/image/$fileID")

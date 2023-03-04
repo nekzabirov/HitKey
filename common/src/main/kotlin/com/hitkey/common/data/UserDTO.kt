@@ -1,13 +1,14 @@
-package com.hitkey.system.data.dto
+package com.hitkey.common.data
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.hitkey.system.database.entity.user.UserAvatar
-import com.hitkey.system.database.entity.user.UserGender
-import org.springframework.context.annotation.Primary
 import java.time.LocalDate
 
+enum class UserGender {
+    MALE, FEMALE
+}
+
 data class UserPhoneDTO(
-    @JsonProperty("phone_number")
+    //@JsonProperty("phone_number")
     val phoneNumber: String,
 
     @JsonProperty("confirmed")
@@ -22,19 +23,21 @@ data class UserEmailDTO(
 )
 
 data class UserAvatarDTO(
-    @JsonProperty("file_id")
+    //@JsonProperty("file_id")
     val fileID: String,
 
     val primary: Boolean
 )
 
 data class UserDTO(
+    val id: Long,
+
     val firstName: String,
     val lastName: String,
 
     val birthDay: LocalDate,
 
-    @JsonProperty("sex")
+    //@JsonProperty("sex")
     val gender: UserGender,
 
     val phones: List<UserPhoneDTO>,

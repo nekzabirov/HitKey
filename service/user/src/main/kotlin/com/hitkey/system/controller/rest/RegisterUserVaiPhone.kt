@@ -2,7 +2,7 @@ package com.hitkey.system.controller.rest
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.hitkey.system.database.entity.user.UserGender
-import com.hitkey.system.exception.ParamIsRequired
+import com.hitkey.common.config.ParamIsRequired
 import reactor.core.publisher.Mono
 import java.time.LocalDate
 

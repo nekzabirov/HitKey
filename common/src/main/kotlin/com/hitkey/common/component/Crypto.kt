@@ -1,14 +1,10 @@
-package com.hitkey.system.component
+package com.hitkey.common.component
 
-import com.hitkey.system.database.entity.user.UserEntity
 import io.jsonwebtoken.Claims
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Component
-import java.util.Base64
-import java.util.Date
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 @Component
@@ -17,19 +13,16 @@ class HitCrypto {
 
     private val expiredTime: Long = TimeUnit.DAYS.toMillis(100)
 
-    @Autowired
-    private lateinit var passwordEncoder: PasswordEncoder
+    fun encodePassword(password: String): String = password
 
-    fun encodePassword(password: String): String = passwordEncoder.encode(password)
+    fun matches(rawPassword: String, password: String) = rawPassword == password
 
-    fun matches(rawPassword: String, password: String) = passwordEncoder.matches(rawPassword, password)
-
-    fun generateAuthToken(user: UserEntity): String {
+    fun generateAuthToken(subjectID: Long): String {
         val creationDate = Date()
 
         return Jwts.builder()
-            .setClaims(hashMapOf("role" to "USER"))
-            .setSubject(user.id.toString())
+            .setClaims(hashMapOf<String, String>())
+            .setSubject(subjectID.toString())
             .setIssuedAt(creationDate)
             .setExpiration(Date(creationDate.time + expiredTime))
             .signWith(Keys.hmacShaKeyFor(secret.toByteArray()))
@@ -53,7 +46,7 @@ class HitCrypto {
         .parseClaimsJws(token)
         .body
 
-    fun readUserID(token: String): String = Jwts.parserBuilder()
+    fun readSubjectID(token: String): String = Jwts.parserBuilder()
         .setSigningKey(secret.let { Base64.getEncoder().encodeToString(secret.toByteArray()) })
         .build()
         .parseClaimsJws(token)

@@ -1,4 +1,4 @@
-package com.hitkey.system.component
+package com.hitkey.develop.component
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpHeaders

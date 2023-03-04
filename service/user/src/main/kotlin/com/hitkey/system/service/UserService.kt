@@ -1,10 +1,10 @@
 package com.hitkey.system.service
 
-import com.hitkey.system.component.HitCrypto
-import com.hitkey.system.data.dto.UserAvatarDTO
-import com.hitkey.system.data.dto.UserDTO
-import com.hitkey.system.data.dto.UserEmailDTO
-import com.hitkey.system.data.dto.UserPhoneDTO
+import com.hitkey.common.component.HitCrypto
+import com.hitkey.common.data.UserAvatarDTO
+import com.hitkey.common.data.UserDTO
+import com.hitkey.common.data.UserEmailDTO
+import com.hitkey.common.data.UserPhoneDTO
 import com.hitkey.system.database.entity.user.UserAvatar
 import com.hitkey.system.database.entity.user.UserEntity
 import com.hitkey.system.database.entity.user.UserGender
@@ -55,38 +55,44 @@ class UserService {
         userPhoneRepo.findByOwnerID(id).collectList(),
         userEmailRepo.findByOwnerID(id).collectList(),
         userAvatarRepo.findAllByOwnerID(id).collectList()
-    ).flatMap { contacts -> userRepo
-        .findById(id)
-        .map { user ->
-            UserDTO(
-                firstName = user.firstName,
-                lastName = user.lastName,
+    ).flatMap { contacts ->
+        userRepo
+            .findById(id)
+            .map { user ->
+                UserDTO(
+                    id = user.id,
 
-                birthDay = user.birthday,
+                    firstName = user.firstName,
+                    lastName = user.lastName,
 
-                gender = user.gender,
+                    birthDay = user.birthday,
 
-                phones = contacts.t1.map {
-                    UserPhoneDTO(
-                        phoneNumber = it.phoneNumber,
-                        isConfirmed = it.confirmed
-                    )
-                },
-                emails = contacts.t2.map {
-                    UserEmailDTO(
-                        email = it.email,
-                        isConfirmed = it.confirmed
-                    )
-                },
+                    gender = when (user.gender) {
+                        UserGender.MALE -> com.hitkey.common.data.UserGender.MALE
+                        else -> com.hitkey.common.data.UserGender.FEMALE
+                    },
 
-                avatar = contacts.t3.map {
-                    UserAvatarDTO(
-                        fileID = it.fileID,
-                        primary = it.active
-                    )
-                }
-            )
-        }
+                    phones = contacts.t1.map {
+                        UserPhoneDTO(
+                            phoneNumber = it.phoneNumber,
+                            isConfirmed = it.confirmed
+                        )
+                    },
+                    emails = contacts.t2.map {
+                        UserEmailDTO(
+                            email = it.email,
+                            isConfirmed = it.confirmed
+                        )
+                    },
+
+                    avatar = contacts.t3.map {
+                        UserAvatarDTO(
+                            fileID = it.fileID,
+                            primary = it.active
+                        )
+                    }
+                )
+            }
     }
 
     fun addAvatarForUser(userID: Long, image: String) = findBy(userID)
@@ -108,17 +114,17 @@ class UserService {
         userRepo
             .findById(userID)
             .map {
-            it.apply {
-                if (firstName != null)
-                    this.firstName = firstName
-                if (lastName != null)
-                    this.lastName = lastName
-                if (birthday != null)
-                    this.birthday = birthday
-                if (gender != null)
-                    this.gender = gender
+                it.apply {
+                    if (firstName != null)
+                        this.firstName = firstName
+                    if (lastName != null)
+                        this.lastName = lastName
+                    if (birthday != null)
+                        this.birthday = birthday
+                    if (gender != null)
+                        this.gender = gender
+                }
             }
-        }
             .flatMap {
                 userRepo.save(it)
             }

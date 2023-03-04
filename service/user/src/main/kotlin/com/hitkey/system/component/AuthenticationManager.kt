@@ -1,5 +1,6 @@
 package com.hitkey.system.component
 
+import com.hitkey.common.component.HitCrypto
 import com.hitkey.system.service.UserService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.security.authentication.ReactiveAuthenticationManager
@@ -22,7 +23,7 @@ class AuthenticationManager: ReactiveAuthenticationManager {
         return Mono.just(crypto.validateToken(authToken))
             .filter { it }
             .switchIfEmpty(Mono.empty())
-            .map { crypto.readUserID(authToken) }
+            .map { crypto.readSubjectID(authToken) }
             .map { it.toLong() }
             .publish { userService.findBy(it) }
             .map {

@@ -11,4 +11,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.13.0")
+
+    implementation("io.jsonwebtoken:jjwt-api:0.11.2")
 }

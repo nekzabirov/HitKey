@@ -1,7 +1,7 @@
 package com.hitkey.file.service
 
 import com.hitkey.common.config.NotFoundException
-import com.hitkey.file.config.ParamIsRequired
+import com.hitkey.common.config.ParamIsRequired
 import kotlinx.coroutines.flow.flow
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono

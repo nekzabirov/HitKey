@@ -1,8 +1,7 @@
 package com.hitkey.common.config
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.hitkey.common.HitResponse
+import com.hitkey.common.data.HitResponse
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.MethodParameter
 import org.springframework.http.MediaType
@@ -16,8 +15,10 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @RestControllerAdvice
-class ResponseWrapper(serverCodecConfigurer: ServerCodecConfigurer,
-                      resolver: RequestedContentTypeResolver) :
+class ResponseWrapper(
+    serverCodecConfigurer: ServerCodecConfigurer,
+    resolver: RequestedContentTypeResolver
+) :
     ResponseBodyResultHandler(serverCodecConfigurer.writers, resolver) {
 
     @Autowired
@@ -25,7 +26,8 @@ class ResponseWrapper(serverCodecConfigurer: ServerCodecConfigurer,
 
     override fun supports(result: HandlerResult): Boolean {
         if (result.returnType.resolve() != Mono::class.java &&
-            result.returnType.resolve() != Flux::class.java)
+            result.returnType.resolve() != Flux::class.java
+        )
             return false
 
         return true
@@ -41,15 +43,17 @@ class ResponseWrapper(serverCodecConfigurer: ServerCodecConfigurer,
             if (r is ByteArray) {
                 exchange.response.headers.contentType = MediaType.IMAGE_JPEG
                 r
-            }
-            else {
+            } else {
                 exchange.response.headers.contentType = MediaType.APPLICATION_JSON
                 HitResponse.OK(r)
             }
         }.map {
-            objectMapper.writeValueAsBytes(it).run {
-                exchange.response.bufferFactory().wrap(this)
-            }
+            if (it is ByteArray)
+                exchange.response.bufferFactory().wrap(it)
+            else
+                objectMapper.writeValueAsBytes(it).run {
+                    exchange.response.bufferFactory().wrap(this)
+                }
         }
 
         return exchange.response.writeWith(body)

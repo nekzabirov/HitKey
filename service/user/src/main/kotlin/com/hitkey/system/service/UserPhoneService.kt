@@ -1,6 +1,6 @@
 package com.hitkey.system.service
 
-import com.hitkey.system.component.HitCrypto
+import com.hitkey.common.component.HitCrypto
 import com.hitkey.system.database.entity.user.UserEntity
 import com.hitkey.system.database.entity.user.UserPhone
 import com.hitkey.system.database.repo.UserPhoneRepo
