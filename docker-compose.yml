@@ -1,0 +1,57 @@
+version: '3.4'
+
+services:
+  server:
+    build: service/server
+    ports:
+      - "8761:8761"
+    networks:
+      - microservices_network
+
+  userDB:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: nek
+      POSTGRES_DB: user_db
+      POSTGRES_PASSWORD: 1234
+    ports:
+      - "5432:5432"
+    networks:
+      - microservices_network
+
+  file:
+    build: service/file
+    container_name: file
+    environment:
+      - SERVER_ENDPOINT=http://server:8761/eureka/
+    depends_on:
+      - server
+    volumes:
+      - ./server_data:/app/files
+    networks:
+      - microservices_network
+    ports:
+      - "8081:8081"
+
+  user:
+    build: service/user
+    container_name: user
+    ports:
+      - "8080:8080"
+    depends_on:
+      - userDB
+      - server
+    environment:
+      USER_DB_HOST: userDB
+      USER_DB_PORT: 5432
+      USER_DB_NAME: user_db
+      USER_DB_USERNAME: nek
+      USER_DB_PASSWORD: 1234
+      SERVER_ENDPOINT: http://server:8761/eureka/
+    networks:
+      - microservices_network
+
+networks:
+  microservices_network:
+    driver: bridge

@@ -1,0 +1,8 @@
+build
+gradle
+.gradle
+.idea
+user/build
+file/build
+common/build
+server/build

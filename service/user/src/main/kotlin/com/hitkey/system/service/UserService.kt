@@ -1,0 +1,125 @@
+package com.hitkey.system.service
+
+import com.hitkey.system.component.HitCrypto
+import com.hitkey.system.data.dto.UserAvatarDTO
+import com.hitkey.system.data.dto.UserDTO
+import com.hitkey.system.data.dto.UserEmailDTO
+import com.hitkey.system.data.dto.UserPhoneDTO
+import com.hitkey.system.database.entity.user.UserAvatar
+import com.hitkey.system.database.entity.user.UserEntity
+import com.hitkey.system.database.entity.user.UserGender
+import com.hitkey.system.database.repo.UserAvatarRepo
+import com.hitkey.system.database.repo.UserEmailRepo
+import com.hitkey.system.database.repo.UserPhoneRepo
+import com.hitkey.system.database.repo.UserRepo
+import com.hitkey.system.exception.UserNotFound
+import org.reactivestreams.Publisher
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.stereotype.Service
+import reactor.core.publisher.Mono
+import java.time.LocalDate
+
+@Service
+class UserService {
+    @Autowired
+    private lateinit var userRepo: UserRepo
+
+    @Autowired
+    private lateinit var userPhoneRepo: UserPhoneRepo
+
+    @Autowired
+    private lateinit var userEmailRepo: UserEmailRepo
+
+    @Autowired
+    private lateinit var crypto: HitCrypto
+
+    @Autowired
+    private lateinit var userAvatarRepo: UserAvatarRepo
+
+    @Autowired
+    private lateinit var fileService: FileService
+
+    fun register(
+        firstName: String, lastName: String, birthday: LocalDate, gender: UserGender, password: String
+    ) = UserEntity(
+        firstName = firstName,
+        lastName = lastName,
+        birthday = birthday,
+        password = crypto.encodePassword(password),
+        gender = gender
+    ).run { userRepo.save(this) }
+
+    fun findBy(id: Publisher<Long>) = userRepo.findById(id)
+
+    fun findBy(id: Long) = Mono.zip(
+        userPhoneRepo.findByOwnerID(id).collectList(),
+        userEmailRepo.findByOwnerID(id).collectList(),
+        userAvatarRepo.findAllByOwnerID(id).collectList()
+    ).flatMap { contacts -> userRepo
+        .findById(id)
+        .map { user ->
+            UserDTO(
+                firstName = user.firstName,
+                lastName = user.lastName,
+
+                birthDay = user.birthday,
+
+                gender = user.gender,
+
+                phones = contacts.t1.map {
+                    UserPhoneDTO(
+                        phoneNumber = it.phoneNumber,
+                        isConfirmed = it.confirmed
+                    )
+                },
+                emails = contacts.t2.map {
+                    UserEmailDTO(
+                        email = it.email,
+                        isConfirmed = it.confirmed
+                    )
+                },
+
+                avatar = contacts.t3.map {
+                    UserAvatarDTO(
+                        fileID = it.fileID,
+                        primary = it.active
+                    )
+                }
+            )
+        }
+    }
+
+    fun addAvatarForUser(userID: Long, image: String) = findBy(userID)
+        .switchIfEmpty(Mono.error(UserNotFound()))
+        .then(userAvatarRepo.disPrimaryBy(userID))
+        .then(fileService.addUserFile(image))
+        .map {
+            UserAvatar(
+                fileID = it.data as String,
+                active = true,
+                ownerID = userID
+            )
+        }
+        .flatMap {
+            userAvatarRepo.save(it)
+        }
+
+    fun update(userID: Long, firstName: String?, lastName: String?, birthday: LocalDate?, gender: UserGender?) =
+        userRepo
+            .findById(userID)
+            .map {
+            it.apply {
+                if (firstName != null)
+                    this.firstName = firstName
+                if (lastName != null)
+                    this.lastName = lastName
+                if (birthday != null)
+                    this.birthday = birthday
+                if (gender != null)
+                    this.gender = gender
+            }
+        }
+            .flatMap {
+                userRepo.save(it)
+            }
+}
