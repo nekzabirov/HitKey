@@ -1,5 +1,4 @@
 build
 .gradle
 .idea
-service/*/build
 server_data
