@@ -24,10 +24,10 @@ class UserService {
                     throw RuntimeException("file service isn't run")
 
                 random()
-            }.homePageUrl
+            }.ipAddr
 
             return WebClient.create(
-                homePageUrl+ "api/v1/user/"
+                "$homePageUrl/api/v1/user/"
             )
         }
 
