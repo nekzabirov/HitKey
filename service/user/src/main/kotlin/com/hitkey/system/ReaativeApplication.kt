@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient
+import org.springframework.cloud.client.loadbalancer.LoadBalanced
 import org.springframework.context.annotation.Bean
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.data.r2dbc.config.EnableR2dbcAuditing
@@ -14,6 +15,7 @@ import org.springframework.r2dbc.connection.init.ConnectionFactoryInitializer
 import org.springframework.r2dbc.connection.init.ResourceDatabasePopulator
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.web.client.RestTemplate
 import org.springframework.web.reactive.accept.RequestedContentTypeResolver
 import org.springframework.web.reactive.config.EnableWebFlux
 
@@ -53,7 +55,6 @@ class ReaativeApplication {
         initializer.setDatabasePopulator(populator)
         return initializer
     }
-
 }
 
 fun main(args: Array<String>) {

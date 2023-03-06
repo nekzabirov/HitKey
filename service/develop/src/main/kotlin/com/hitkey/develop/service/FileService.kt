@@ -19,15 +19,15 @@ class FileService {
 
     private val webClient: WebClient
         get() {
-            val homePageUrl = eurekaClient.getApplication("file_service").instances.run {
+            val instance = eurekaClient.getApplication("file_service").instances.run {
                 if (this.isEmpty())
                     throw RuntimeException("file service isn't run")
 
                 random()
-            }.homePageUrl
+            }
 
             return WebClient.create(
-                homePageUrl+ "api/v1/"
+                "https://" + instance.hostName + "/api/v1/"
             )
         }
 
