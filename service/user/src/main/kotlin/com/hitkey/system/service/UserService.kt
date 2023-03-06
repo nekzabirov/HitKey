@@ -75,13 +75,13 @@ class UserService {
                     phones = contacts.t1.map {
                         UserPhoneDTO(
                             phoneNumber = it.phoneNumber,
-                            isConfirmed = it.confirmed
+                            confirmed = it.confirmed
                         )
                     },
                     emails = contacts.t2.map {
                         UserEmailDTO(
                             email = it.email,
-                            isConfirmed = it.confirmed
+                            confirmed = it.confirmed
                         )
                     },
 

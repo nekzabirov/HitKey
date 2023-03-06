@@ -42,7 +42,7 @@ class AppController {
         appService.create(
             ownerID = user.id,
             name = payload.name,
-            logoID = logoID
+            logoID = logoID!!
         ).awaitSingle().run {
             emit(this)
         }
