@@ -19,15 +19,15 @@ class UserService {
 
     private val webClient: WebClient
         get() {
-            val homePageUrl = eurekaClient.getApplication("user_service").instances.run {
+            val hostName = eurekaClient.getApplication("user_service").instances.run {
                 if (this.isEmpty())
                     throw RuntimeException("file service isn't run")
 
                 random()
-            }.homePageUrl
+            }.hostName
 
             return WebClient.create(
-                "https://$homePageUrl/user/"
+                "https://$hostName/api/v1/user/"
             )
         }
 
