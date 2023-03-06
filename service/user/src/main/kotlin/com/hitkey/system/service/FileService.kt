@@ -27,7 +27,7 @@ class FileService(private val webClientBuilder: WebClient.Builder) {
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(FileRequest(file))
         .retrieve()
-        .bodyToMono(HitResponse.OK::class.java)
+        .bodyToMono<HitResponse.OK<String>>()
 
     fun findUserFile(fileID: String) = webClient.get()
         .uri("user/image/$fileID")

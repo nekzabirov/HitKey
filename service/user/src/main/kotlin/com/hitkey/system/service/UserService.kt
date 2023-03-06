@@ -13,10 +13,15 @@ import com.hitkey.system.database.repo.UserEmailRepo
 import com.hitkey.system.database.repo.UserPhoneRepo
 import com.hitkey.system.database.repo.UserRepo
 import com.hitkey.system.exception.UserNotFound
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.reactive.asFlow
+import kotlinx.coroutines.reactive.asPublisher
+import kotlinx.coroutines.reactive.awaitSingle
 import org.reactivestreams.Publisher
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
+import reactor.kotlin.core.publisher.toMono
 import java.time.LocalDate
 
 @Service
@@ -95,23 +100,30 @@ class UserService {
             }
     }
 
-    fun addAvatarForUser(userID: Long, image: String) = findBy(userID)
+    fun addAvatarForUser(userID: Long, image: String) = userRepo
+        .findById(userID)
         .switchIfEmpty(Mono.error(UserNotFound()))
-        .then(userAvatarRepo.disPrimaryBy(userID))
-        .then(fileService.addUserFile(image))
+        .asFlow()
         .map {
-            UserAvatar(
-                fileID = it.data as String,
-                active = true,
-                ownerID = userID
-            )
+            val fileID = fileService.addUserFile(image).awaitSingle().data
+
+            it.apply {
+                avatar = fileID
+            }
         }
-        .flatMap {
-            userAvatarRepo.save(it)
+        .asPublisher()
+        .toMono()
+        .map {
+            true
         }
 
-    fun update(userID: Long, firstName: String?, lastName: String?, birthday: LocalDate?, gender: UserGender?) =
-        userRepo
+    fun update(
+        userID: Long,
+        firstName: String?,
+        lastName: String?,
+        birthday: LocalDate?,
+        gender: UserGender?
+    ) = userRepo
             .findById(userID)
             .map {
                 it.apply {
