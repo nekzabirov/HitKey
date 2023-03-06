@@ -70,6 +70,7 @@ class UserController {
     fun attachPhone(@RequestBody payload: ConfirmPhoneRequest) = userPhoneService
         .confirmPhoneToken(payload.token, payload.code)
         .flatMap { userPhoneService.attachConfirmPhoneToUser(info(), it) }
+        .map { true }
 
     @PutMapping("attach/email")
     fun attachEmail(@RequestBody payload: RegisterEmailRequest) = userEmailService
