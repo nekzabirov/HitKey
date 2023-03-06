@@ -27,7 +27,7 @@ class UserService(private val webClientBuilder: WebClient.Builder) {
             it.printStackTrace()
             Mono.error(UnAuthorizedException())
         }
-        .map {
+        .mapNotNull {
             it.data
         }
 
