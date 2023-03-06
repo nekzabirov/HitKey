@@ -39,9 +39,6 @@ class UserService {
     private lateinit var crypto: HitCrypto
 
     @Autowired
-    private lateinit var userAvatarRepo: UserAvatarRepo
-
-    @Autowired
     private lateinit var fileService: FileService
 
     fun register(
@@ -58,8 +55,7 @@ class UserService {
 
     fun findBy(id: Long) = Mono.zip(
         userPhoneRepo.findByOwnerID(id).collectList(),
-        userEmailRepo.findByOwnerID(id).collectList(),
-        userAvatarRepo.findAllByOwnerID(id).collectList()
+        userEmailRepo.findByOwnerID(id).collectList()
     ).flatMap { contacts ->
         userRepo
             .findById(id)
@@ -90,12 +86,7 @@ class UserService {
                         )
                     },
 
-                    avatar = contacts.t3.map {
-                        UserAvatarDTO(
-                            fileID = it.fileID,
-                            primary = it.active
-                        )
-                    }
+                    avatar = user.avatar
                 )
             }
     }
