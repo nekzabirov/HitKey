@@ -41,5 +41,5 @@ data class UserDTO(
 
     val emails: List<UserEmailDTO> = emptyList(),
 
-    val avatar: List<UserAvatarDTO> = emptyList()
+    val avatar: String? = null
 )
