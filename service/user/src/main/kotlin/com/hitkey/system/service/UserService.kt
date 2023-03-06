@@ -104,6 +104,9 @@ class UserService {
         }
         .asPublisher()
         .toMono()
+        .flatMap {
+            userRepo.save(it)
+        }
         .map {
             true
         }
