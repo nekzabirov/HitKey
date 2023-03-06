@@ -35,7 +35,7 @@ class AuthController {
     @PostMapping("phone/register/step/1")
     fun register(@RequestBody payload: RegisterPhoneRequest) = Mono.create<TokenResponse> {
         if (payload.phoneNumber.isBlank())
-            it.error(ParamIsRequired("phone token should be fill"))
+            it.error(ParamIsRequired("phone should be fill"))
         else
             it.success()
     }

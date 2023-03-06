@@ -1,8 +1,12 @@
 package com.hitkey.system.controller
 
-import com.hitkey.system.controller.rest.UserUpdateRequest
+import com.hitkey.system.controller.rest.*
 import com.hitkey.system.database.entity.user.UserEntity
+import com.hitkey.system.exception.EmailAlreadyConfirmed
+import com.hitkey.system.exception.PhoneAlreadyConfirmed
 import com.hitkey.system.service.FileService
+import com.hitkey.system.service.UserEmailService
+import com.hitkey.system.service.UserPhoneService
 import com.hitkey.system.service.UserService
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.reactive.asFlow
@@ -24,6 +28,12 @@ class UserController {
     @Autowired
     private lateinit var fileService: FileService
 
+    @Autowired
+    private lateinit var userPhoneService: UserPhoneService
+
+    @Autowired
+    private lateinit var userEmailService: UserEmailService
+
     @GetMapping("info")
     fun mInfo() = userService
         .findBy(info().id)
@@ -43,6 +53,40 @@ class UserController {
 
     @GetMapping("image/{fileID}", produces = [MediaType.IMAGE_JPEG_VALUE])
     fun image(@PathVariable fileID: String) = fileService.findUserFile(fileID)
+
+    @PutMapping("attach/phone")
+    fun attachPhone(@RequestBody payload: RegisterPhoneRequest) = userPhoneService
+        .exitsBy(payload.phoneNumber, true)
+        .handle { t, u ->
+            if (t)
+                u.error(PhoneAlreadyConfirmed())
+            else
+                u.next(t)
+        }
+        .then(userPhoneService.attachPhoneToUser(info(), payload.phoneNumber, false))
+        .map { TokenResponse(it) }
+
+    @PutMapping("attach/phone/confirm")
+    fun attachPhone(@RequestBody payload: ConfirmPhoneRequest) = userPhoneService
+        .confirmPhoneToken(payload.token, payload.code)
+        .map { true }
+
+    @PutMapping("attach/email")
+    fun attachEmail(@RequestBody payload: RegisterEmailRequest) = userEmailService
+        .existBy(payload.email, true)
+        .handle { t, u ->
+            if (t)
+                u.error(EmailAlreadyConfirmed())
+            else
+                u.next(t)
+        }
+        .then(userEmailService.attachTo(info(), payload.email, false))
+        .map { TokenResponse(it) }
+
+    @PutMapping("attach/email/confirm")
+    fun attachEmailConfirm(@RequestBody payload: ConfirmEmailRequest) = userEmailService
+        .confirmEmail(info(), payload.token)
+        .map { true }
 
     fun info() = SecurityContextHolder
         .getContext()

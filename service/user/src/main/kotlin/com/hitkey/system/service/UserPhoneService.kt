@@ -43,35 +43,35 @@ class UserPhoneService {
 
     fun confirmPhoneToken(phoneToken: String, code: String): Mono<String> = Mono
         .create {
-        if (!hitCrypto.validateToken(phoneToken)) {
-            it.error(TokenExpiredException())
+            if (!hitCrypto.validateToken(phoneToken)) {
+                it.error(TokenExpiredException())
 
-            return@create
+                return@create
+            }
+
+            val claims = hitCrypto.readClaims(phoneToken)
+
+            if (!claims.containsKey("code") || !claims.containsKey("phone")) {
+                it.error(TokenExpiredException())
+
+                return@create
+            }
+
+            if (claims["code"] != code) {
+                it.error(FaultPhoneConfirm())
+                return@create
+            }
+
+            val phone = claims["phone"] as String
+
+            it.success(phone)
+        }.handle { phone, u ->
+            userPhoneRepo.confirm(phone)
+
+            u.next(
+                hitCrypto.generateToken(hashMapOf(Pair("phoneReal", phone)))
+            )
         }
-
-        val claims = hitCrypto.readClaims(phoneToken)
-
-        if (!claims.containsKey("code") || !claims.containsKey("phone")) {
-            it.error(TokenExpiredException())
-
-            return@create
-        }
-
-        if (claims["code"] != code) {
-            it.error(FaultPhoneConfirm())
-            return@create
-        }
-
-        val phone = claims["phone"] as String
-
-        it.success(phone)
-    }.handle { phone, u ->
-        userPhoneRepo.confirm(phone)
-
-        u.next(
-            hitCrypto.generateToken(hashMapOf(Pair("phoneReal", phone)))
-        )
-    }
 
     fun attachPhoneToUser(userEntity: UserEntity, phoneNumber: String, isConfirmed: Boolean = false) =
         phoneParamRegxCheck(phoneNumber)
