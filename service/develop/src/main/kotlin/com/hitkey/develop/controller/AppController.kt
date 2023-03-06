@@ -87,7 +87,7 @@ class AppController {
             true
         }
 
-    @GetMapping("{token}")
+    @GetMapping("{token}/info")
     fun info(@PathVariable token: String) = appService
         .infoBy(token)
 

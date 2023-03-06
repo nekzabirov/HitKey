@@ -8,13 +8,13 @@ COPY . /home/gradle/project
 WORKDIR /home/gradle/project
 
 # Build the project with Gradle
-RUN gradle service:user:bootWar
+RUN gradle service:develop:bootWar
 
 # Use the official OpenJDK image as the base image for the runtime image
 FROM openjdk:latest
 
 # Copy the built JAR file to the Docker image
-COPY --from=build /home/gradle/project/service/user/build/libs/*.war /app.war
+COPY --from=build /home/gradle/project/service/develop/build/libs/*.war /app.war
 
 # Set the command to run when the container starts
 CMD ["java", "-jar", "/app.war"]
