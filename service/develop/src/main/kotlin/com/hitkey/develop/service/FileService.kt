@@ -12,32 +12,22 @@ import org.springframework.web.reactive.function.client.bodyToMono
 import reactor.core.publisher.Mono
 
 @Service
-class FileService {
+class FileService(private val webClientBuilder: WebClient.Builder) {
 
     @Autowired
     private lateinit var eurekaClient: EurekaClient
 
-    private val webClient: WebClient
-        get() {
-            val instance = eurekaClient.getApplication("file_service").instances.run {
-                if (this.isEmpty())
-                    throw RuntimeException("file service isn't run")
-
-                random()
-            }
-
-            return WebClient.create(
-                "https://" + instance.hostName + "/api/v1/"
-            )
-        }
+    private val webClient
+        get() = webClientBuilder
+            .baseUrl("http://FILE/api/v1/")
+            .build()
 
     fun addUserFile(file: String) = webClient.post()
         .uri("user/image/save")
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(FileRequest(file))
         .retrieve()
-        .bodyToMono<HitResponse.OK<String>>()
-        .map { it.data }
+        .bodyToMono(HitResponse.OK::class.java)
 
     fun findUserFile(fileID: String) = webClient.get()
         .uri("user/image/$fileID")

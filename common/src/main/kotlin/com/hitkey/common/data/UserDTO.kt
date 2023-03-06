@@ -1,6 +1,5 @@
 package com.hitkey.common.data
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import java.time.LocalDate
 
 enum class UserGender {
@@ -9,40 +8,38 @@ enum class UserGender {
 
 data class UserPhoneDTO(
     //@JsonProperty("phone_number")
-    val phoneNumber: String,
+    val phoneNumber: String = "",
 
-    @JsonProperty("confirmed")
-    val isConfirmed: Boolean
+    val confirmed: Boolean = false
 )
 
 data class UserEmailDTO(
-    val email: String,
+    val email: String = "",
 
-    @JsonProperty("confirmed")
-    val isConfirmed: Boolean
+    val confirmed: Boolean = false
 )
 
 data class UserAvatarDTO(
     //@JsonProperty("file_id")
-    val fileID: String,
+    val fileID: String = "",
 
-    val primary: Boolean
+    val primary: Boolean = false
 )
 
 data class UserDTO(
-    val id: Long,
+    val id: Long = 0,
 
-    val firstName: String,
-    val lastName: String,
+    val firstName: String = "",
+    val lastName: String = "",
 
-    val birthDay: LocalDate,
+    val birthDay: LocalDate = LocalDate.now(),
 
     //@JsonProperty("sex")
-    val gender: UserGender,
+    val gender: UserGender = UserGender.MALE,
 
-    val phones: List<UserPhoneDTO>,
+    val phones: List<UserPhoneDTO> = emptyList(),
 
-    val emails: List<UserEmailDTO>,
+    val emails: List<UserEmailDTO> = emptyList(),
 
-    val avatar: List<UserAvatarDTO>
+    val avatar: List<UserAvatarDTO> = emptyList()
 )
