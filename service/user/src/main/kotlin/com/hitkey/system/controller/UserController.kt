@@ -69,7 +69,7 @@ class UserController {
     @PutMapping("attach/phone/confirm")
     fun attachPhone(@RequestBody payload: ConfirmPhoneRequest) = userPhoneService
         .confirmPhoneToken(payload.token, payload.code)
-        .map { true }
+        .flatMap { userPhoneService.attachConfirmPhoneToUser(info(), it) }
 
     @PutMapping("attach/email")
     fun attachEmail(@RequestBody payload: RegisterEmailRequest) = userEmailService
@@ -85,7 +85,10 @@ class UserController {
 
     @PutMapping("attach/email/confirm")
     fun attachEmailConfirm(@RequestBody payload: ConfirmEmailRequest) = userEmailService
-        .confirmEmail(info(), payload.token)
+        .confirmEmailToken(payload.token)
+        .flatMap {
+            userEmailService.confirmEmail(info(), it)
+        }
         .map { true }
 
     fun info() = SecurityContextHolder

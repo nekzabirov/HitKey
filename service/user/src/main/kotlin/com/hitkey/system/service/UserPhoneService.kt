@@ -65,12 +65,9 @@ class UserPhoneService {
             val phone = claims["phone"] as String
 
             it.success(phone)
-        }.handle { phone, u ->
-            userPhoneRepo.confirm(phone)
-
-            u.next(
-                hitCrypto.generateToken(hashMapOf(Pair("phoneReal", phone)))
-            )
+        }
+        .map {
+            hitCrypto.generateToken(hashMapOf(Pair("phoneReal", it)))
         }
 
     fun attachPhoneToUser(userEntity: UserEntity, phoneNumber: String, isConfirmed: Boolean = false) =
