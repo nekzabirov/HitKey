@@ -53,7 +53,7 @@ class AuthController {
             else
                 it.success()
         }
-        .then(userPhoneService.confirmPhone(payload.token, payload.code))
+        .then(userPhoneService.confirm(payload.token, payload.code))
         .map { TokenResponse(it) }
 
     @PostMapping("phone/register/step/3")
@@ -81,7 +81,7 @@ class AuthController {
             )
         )
         .flatMap {
-            userPhoneService.attachPhoneTo(
+            userPhoneService.attachConfirmTo(
                 userID = it.id,
                 phoneToken = payload.phoneToken
             )

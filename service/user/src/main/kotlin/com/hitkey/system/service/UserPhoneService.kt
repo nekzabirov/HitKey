@@ -9,9 +9,16 @@ import com.hitkey.system.exception.FaultPhoneConfirm
 import com.hitkey.system.exception.PhoneAlreadyConfirmed
 import com.hitkey.system.exception.TokenExpiredException
 import com.hitkey.system.exception.WrongPhoneNumberFormat
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.reactive.asFlow
+import kotlinx.coroutines.reactive.asPublisher
+import kotlinx.coroutines.reactive.awaitFirst
+import kotlinx.coroutines.reactive.awaitFirstOrNull
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
+import reactor.kotlin.core.publisher.toMono
 
 @Service
 class UserPhoneService {
@@ -27,14 +34,6 @@ class UserPhoneService {
         else
             it.success(phoneToken)
     }
-
-    private fun phoneAlreadyConfirmed(phone: String) = userPhoneRepo.existsByPhoneNumberAndConfirmed(
-        phone, true
-    )
-
-    fun phoneAlreadyConfirmedByToken(phoneToken: String) = validateToken(phoneToken)
-        .map { hitCrypto.readClaims(phoneToken)["phoneReal"] as String }
-        .flatMap { phoneAlreadyConfirmed(it) }
 
     private fun checkPhone(phone: String) = Mono
         .create { u ->
@@ -55,7 +54,17 @@ class UserPhoneService {
                 u.next(true)
         }
 
-    fun registerPhoneTo(userID: Long, phoneNumber: String) = checkPhone(phone = phoneNumber)
+    fun registerPhone(phoneNumber: String) = checkPhone(phone = phoneNumber)
+        .map {
+            hitCrypto.generateToken(
+                hashMapOf(
+                    Pair("phone", phoneNumber),
+                    Pair("code", "1234")
+                )
+            )
+        }
+
+    fun attachTo(userID: Long, phoneNumber: String) = registerPhone(phoneNumber)
         .then(userPhoneRepo.findByPhoneNumber(phoneNumber))
         .defaultIfEmpty(
             UserPhone(
@@ -64,72 +73,65 @@ class UserPhoneService {
                 ownerID = userID
             )
         )
-        .flatMap {
-            userPhoneRepo.save(it.apply {
-                ownerID = userID
-            })
-        }
-        .then(
-            Mono.just(
-                hitCrypto.generateToken(
-                    hashMapOf(
-                        Pair("phone", phoneNumber),
-                        Pair("code", "1234")
-                    )
-                )
-            )
-        )
+        .flatMap { userPhoneRepo.save(it) }
+        .then(registerPhone(phoneNumber))
 
-    fun registerPhone(phoneNumber: String) = registerPhoneTo(0, phoneNumber)
+    fun confirm(phoneToken: String, code: String) = validateToken(phoneToken)
+        .then(Mono.create {
+            val claims = hitCrypto.readClaims(phoneToken)
 
-    fun confirmPhone(phoneToken: String, code: String) = validateToken(phoneToken)
-        .flatMap {
-            Mono.create {
-                val claims = hitCrypto.readClaims(phoneToken)
+            if (!claims.containsKey("code") || !claims.containsKey("phone")) {
+                it.error(TokenExpiredException())
 
-                if (!claims.containsKey("code") || !claims.containsKey("phone")) {
-                    it.error(TokenExpiredException())
-
-                    return@create
-                }
-
-                if (claims["code"] != code) {
-                    it.error(FaultPhoneConfirm())
-                    return@create
-                }
-
-                val phone = claims["phone"] as String
-
-                it.success(phone)
+                return@create
             }
-        }
-        .flatMap { userPhoneRepo.findByPhoneNumber(it) }
-        .switchIfEmpty(Mono.error(NotFoundException()))
-        .handle { t, u ->
-            if (t.confirmed)
-                u.error(PhoneAlreadyConfirmed())
-            else
-                u.next(t)
-        }
-        .flatMap {
-            userPhoneRepo.save(it.apply {
-                confirmed = true
-            })
-        }
-        .map {
-            hitCrypto.generateToken(hashMapOf(Pair("phoneReal", it.phoneNumber)))
-        }
 
-    fun attachPhoneTo(userID: Long, phoneToken: String) = validateToken(phoneToken)
-        .map { hitCrypto.readClaims(phoneToken)["phoneReal"] as String }
-        .flatMap { userPhoneRepo.findByPhoneNumber(it) }
-        .switchIfEmpty(Mono.error(NotFoundException()))
-        .flatMap {
-            userPhoneRepo.save(it.apply {
-                ownerID = userID
-            })
+            if (claims["code"] != code) {
+                it.error(FaultPhoneConfirm())
+                return@create
+            }
+
+            val phone = claims["phone"] as String
+
+            it.success(phone)
+        })
+        .asFlow()
+        .map { phone ->
+            userPhoneRepo.findByPhoneNumber(phone).awaitFirstOrNull()
+                ?.apply {
+                confirmed = true
+            }
+                ?.run {
+                userPhoneRepo.save(this).awaitFirst()
+            }
+
+            hitCrypto.generateToken(hashMapOf(Pair("phoneReal", phone)))
         }
-        .map { UserPhoneDTO(it.phoneNumber, it.confirmed) }
+        .asPublisher()
+        .toMono()
+
+    fun attachConfirmTo(userID: Long, phoneToken: String) = validateToken(phoneToken)
+        .flatMap {
+            val phoneNumber = hitCrypto.readClaims(phoneToken)["phoneReal"] as String
+
+            checkPhone(phoneNumber).then(Mono.just(phoneNumber))
+        }
+        .map {phoneNumber ->
+            UserPhone(
+                phoneNumber = phoneNumber,
+                confirmed = true,
+                ownerID = userID
+            )
+        }
+        .flatMap { userPhoneRepo.save(it) }
+
+    private fun phoneAlreadyConfirmed(phone: String) = userPhoneRepo.existsByPhoneNumberAndConfirmed(
+        phone, true
+    )
+
+    fun phoneAlreadyConfirmedByToken(phoneToken: String) = validateToken(phoneToken)
+        .map { hitCrypto.readClaims(phoneToken)["phoneReal"] as String }
+        .flatMap { phoneAlreadyConfirmed(it) }
 
     fun findConfirmed(phoneNumber: String) = phoneAlreadyConfirmed(phone = phoneNumber)
         .handle { t, u ->

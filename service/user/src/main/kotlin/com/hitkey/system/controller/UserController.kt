@@ -56,12 +56,12 @@ class UserController {
 
     @PutMapping("attach/phone")
     fun attachPhone(@RequestBody payload: RegisterPhoneRequest) = userPhoneService
-        .registerPhoneTo(userID = info().id, payload.phoneNumber)
+        .attachTo(userID = info().id, payload.phoneNumber)
         .map { TokenResponse(it) }
 
     @PutMapping("attach/phone/confirm")
-    fun attachPhone(@RequestBody payload: ConfirmPhoneRequest) = userPhoneService
-        .confirmPhone(payload.token, payload.code)
+    fun conformPhone(@RequestBody payload: ConfirmPhoneRequest) = userPhoneService
+        .confirm(payload.token, payload.code)
         .map { true }
 
     @PutMapping("attach/email")
