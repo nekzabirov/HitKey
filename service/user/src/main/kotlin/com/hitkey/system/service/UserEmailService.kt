@@ -88,4 +88,22 @@ class UserEmailService {
     )
 
     fun existBy(email: String, isConfirmed: Boolean) = userEmailRepo.existsByEmailAndConfirmed(email, isConfirmed)
+
+    fun existByToken(emailToken: String) = Mono
+        .just(hitCrypto.validateToken(emailToken))
+        .then(Mono.just(hitCrypto.readClaims(emailToken)))
+        .handle { claims, u ->
+            if (!claims.containsKey("emailReal")) {
+                u.error(TokenExpiredException())
+
+                return@handle
+            }
+
+            val email = claims["emailReal"] as String
+
+            u.next(email)
+        }
+        .flatMap { email ->
+            existBy(email, true)
+        }
 }

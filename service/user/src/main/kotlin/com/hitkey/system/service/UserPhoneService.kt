@@ -120,4 +120,26 @@ class UserPhoneService {
     fun exitsBy(phone: String, isConfirmed: Boolean) = userPhoneRepo.existsByPhoneNumberAndConfirmed(
         phone, isConfirmed
     )
+
+    fun exitsByToken(phoneToken: String, isConfirmed: Boolean) = Mono
+        .create {
+            if (!hitCrypto.validateToken(phoneToken)) {
+                it.error(TokenExpiredException())
+                return@create
+            }
+
+            val claims = hitCrypto.readClaims(phoneToken)
+
+            if (!claims.containsKey("phoneReal")) {
+                it.error(TokenExpiredException())
+                return@create
+            }
+
+            val phone = claims["phoneReal"] as String
+
+            it.success(phone)
+        }
+        .flatMap { phone ->
+            userPhoneRepo.existsByPhoneNumberAndConfirmed(phone, isConfirmed)
+        }
 }

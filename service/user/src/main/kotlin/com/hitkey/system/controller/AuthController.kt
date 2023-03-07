@@ -69,6 +69,13 @@ class AuthController {
             else
                 it.success()
         })
+        .then(userPhoneService.exitsByToken(payload.phoneToken, true))
+        .handle { t, u ->
+            if (t)
+                u.error(PhoneAlreadyConfirmed())
+            else
+                u.next(true)
+        }
         .then(
             userService.register(
                 firstName = payload.firstName,
@@ -128,6 +135,13 @@ class AuthController {
             else
                 it.success()
         })
+        .then(userEmailService.existByToken(payload.emailToken))
+        .handle { t, u ->
+            if (t)
+                u.error(EmailAlreadyConfirmed())
+            else
+                u.next(true)
+        }
         .then(
             userService.register(
                 firstName = payload.firstName,
