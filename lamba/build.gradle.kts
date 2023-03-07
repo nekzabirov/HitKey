@@ -23,6 +23,8 @@ subprojects {
         implementation("org.springframework.cloud:spring-cloud-starter-function-webflux")
         implementation("org.springframework.cloud:spring-cloud-starter-function-web")
 
+        implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client")
+
         implementation(project(":common"))
     }
 

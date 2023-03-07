@@ -14,7 +14,7 @@ class PhoneNotification {
     fun sendSms(): (Mono<SendSmsRequest>) -> Mono<HitResponse> {
         return  {
             it.map {
-                HitResponse.OK("Nek ok")
+                HitResponse.OK(null)
             }
         }
     }
