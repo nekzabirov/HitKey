@@ -1,10 +1,12 @@
 package com.hitkey.system.service
 
 import com.hitkey.common.component.HitCrypto
-import com.hitkey.system.database.entity.user.UserEntity
+import com.hitkey.common.config.NotFoundException
+import com.hitkey.common.data.UserPhoneDTO
 import com.hitkey.system.database.entity.user.UserPhone
 import com.hitkey.system.database.repo.UserPhoneRepo
 import com.hitkey.system.exception.FaultPhoneConfirm
+import com.hitkey.system.exception.PhoneAlreadyConfirmed
 import com.hitkey.system.exception.TokenExpiredException
 import com.hitkey.system.exception.WrongPhoneNumberFormat
 import org.springframework.beans.factory.annotation.Autowired
@@ -19,127 +21,122 @@ class UserPhoneService {
     @Autowired
     private lateinit var hitCrypto: HitCrypto
 
-    private fun phoneParamRegxCheck(phone: String): Mono<Boolean> = Mono.create { u ->
-        if (phone.isBlank())
-            u.error(WrongPhoneNumberFormat())
-        else if (!phone.startsWith("+"))
-            u.error(WrongPhoneNumberFormat())
-        else if (!phone.replace("+", "").all { it.isDigit() })
-            u.error(WrongPhoneNumberFormat())
+    private fun validateToken(phoneToken: String) = Mono.create {
+        if (!hitCrypto.validateToken(phoneToken))
+            it.error(TokenExpiredException())
         else
-            u.success(true)
+            it.success(phoneToken)
     }
 
-    private fun createPhoneToken(phoneNumber: String) = hitCrypto.generateToken(
-        hashMapOf(
-            Pair("phone", phoneNumber),
-            Pair("code", "1234")
-        )
+    private fun phoneAlreadyConfirmed(phone: String) = userPhoneRepo.existsByPhoneNumberAndConfirmed(
+        phone, true
     )
 
-    fun registerPhone(phoneNumber: String): Mono<String> = phoneParamRegxCheck(phoneNumber).handle { _, u ->
-        u.next(createPhoneToken(phoneNumber))
-    }
+    fun phoneAlreadyConfirmedByToken(phoneToken: String) = validateToken(phoneToken)
+        .map { hitCrypto.readClaims(phoneToken)["phoneReal"] as String }
+        .flatMap { phoneAlreadyConfirmed(it) }
 
-    fun confirmPhoneToken(phoneToken: String, code: String): Mono<String> = Mono
-        .create {
-            if (!hitCrypto.validateToken(phoneToken)) {
-                it.error(TokenExpiredException())
-
-                return@create
-            }
-
-            val claims = hitCrypto.readClaims(phoneToken)
-
-            if (!claims.containsKey("code") || !claims.containsKey("phone")) {
-                it.error(TokenExpiredException())
-
-                return@create
-            }
-
-            if (claims["code"] != code) {
-                it.error(FaultPhoneConfirm())
-                return@create
-            }
-
-            val phone = claims["phone"] as String
-
-            it.success(phone)
+    private fun checkPhone(phone: String) = Mono
+        .create { u ->
+            if (phone.isBlank())
+                u.error(WrongPhoneNumberFormat())
+            else if (!phone.startsWith("+"))
+                u.error(WrongPhoneNumberFormat())
+            else if (!phone.replace("+", "").all { it.isDigit() })
+                u.error(WrongPhoneNumberFormat())
+            else
+                u.success(true)
         }
-        .map {
-            hitCrypto.generateToken(hashMapOf(Pair("phoneReal", it)))
+        .then(phoneAlreadyConfirmed(phone))
+        .handle { t, u ->
+            if (t)
+                u.error(PhoneAlreadyConfirmed())
+            else
+                u.next(true)
         }
 
-    fun attachPhoneToUser(userEntity: UserEntity, phoneNumber: String, isConfirmed: Boolean = false) =
-        phoneParamRegxCheck(phoneNumber)
-            .then(userPhoneRepo.findByPhoneNumber(phoneNumber))
-            .defaultIfEmpty(
-                UserPhone(
-                    phoneNumber = phoneNumber,
-                    confirmed = isConfirmed,
-                    ownerID = userEntity.id
+    fun registerPhoneTo(userID: Long, phoneNumber: String) = checkPhone(phone = phoneNumber)
+        .then(userPhoneRepo.findByPhoneNumber(phoneNumber))
+        .defaultIfEmpty(
+            UserPhone(
+                phoneNumber = phoneNumber,
+                confirmed = false,
+                ownerID = userID
+            )
+        )
+        .flatMap {
+            userPhoneRepo.save(it.apply {
+                ownerID = userID
+            })
+        }
+        .then(
+            Mono.just(
+                hitCrypto.generateToken(
+                    hashMapOf(
+                        Pair("phone", phoneNumber),
+                        Pair("code", "1234")
+                    )
                 )
             )
-            .flatMap {
-                userPhoneRepo.save(it.apply {
-                    ownerID = userEntity.id
-                    confirmed = isConfirmed
-                })
-            }
-            .then(registerPhone(phoneNumber))
+        )
 
-    fun attachConfirmPhoneToUser(userEntity: UserEntity, phoneToken: String) = Mono
-        .create {
-            if (!hitCrypto.validateToken(phoneToken)) {
-                it.error(TokenExpiredException())
-                return@create
-            }
+    fun registerPhone(phoneNumber: String) = registerPhoneTo(0, phoneNumber)
 
-            val claims = hitCrypto.readClaims(phoneToken)
+    fun confirmPhone(phoneToken: String, code: String) = validateToken(phoneToken)
+        .flatMap {
+            Mono.create {
+                val claims = hitCrypto.readClaims(phoneToken)
 
-            if (!claims.containsKey("phoneReal")) {
-                it.error(TokenExpiredException())
-                return@create
-            }
+                if (!claims.containsKey("code") || !claims.containsKey("phone")) {
+                    it.error(TokenExpiredException())
 
-            val phone = claims["phoneReal"] as String
+                    return@create
+                }
 
-            it.success(phone)
-        }
-        .flatMap { phone ->
-            attachPhoneToUser(userEntity, phone, true).map {
-                phone to it
+                if (claims["code"] != code) {
+                    it.error(FaultPhoneConfirm())
+                    return@create
+                }
+
+                val phone = claims["phone"] as String
+
+                it.success(phone)
             }
         }
-
-    fun findConfirmed(phoneNumber: String) = userPhoneRepo.findByPhoneNumberAndConfirmed(
-        phoneNumber = phoneNumber,
-        confirmed = true
-    )
-
-    fun exitsBy(phone: String, isConfirmed: Boolean) = userPhoneRepo.existsByPhoneNumberAndConfirmed(
-        phone, isConfirmed
-    )
-
-    fun exitsByToken(phoneToken: String, isConfirmed: Boolean) = Mono
-        .create {
-            if (!hitCrypto.validateToken(phoneToken)) {
-                it.error(TokenExpiredException())
-                return@create
-            }
-
-            val claims = hitCrypto.readClaims(phoneToken)
-
-            if (!claims.containsKey("phoneReal")) {
-                it.error(TokenExpiredException())
-                return@create
-            }
-
-            val phone = claims["phoneReal"] as String
-
-            it.success(phone)
+        .flatMap { userPhoneRepo.findByPhoneNumber(it) }
+        .switchIfEmpty(Mono.error(NotFoundException()))
+        .handle { t, u ->
+            if (t.confirmed)
+                u.error(PhoneAlreadyConfirmed())
+            else
+                u.next(t)
         }
-        .flatMap { phone ->
-            userPhoneRepo.existsByPhoneNumberAndConfirmed(phone, isConfirmed)
+        .flatMap {
+            userPhoneRepo.save(it.apply {
+                confirmed = true
+            })
         }
+        .map {
+            hitCrypto.generateToken(hashMapOf(Pair("phoneReal", it.phoneNumber)))
+        }
+
+    fun attachPhoneTo(userID: Long, phoneToken: String) = validateToken(phoneToken)
+        .map { hitCrypto.readClaims(phoneToken)["phoneReal"] as String }
+        .flatMap { userPhoneRepo.findByPhoneNumber(it) }
+        .switchIfEmpty(Mono.error(NotFoundException()))
+        .flatMap {
+            userPhoneRepo.save(it.apply {
+                ownerID = userID
+            })
+        }
+        .map { UserPhoneDTO(it.phoneNumber, it.confirmed) }
+
+    fun findConfirmed(phoneNumber: String) = phoneAlreadyConfirmed(phone = phoneNumber)
+        .handle { t, u ->
+            if (!t)
+                u.error(NotFoundException())
+            else
+                u.next(t)
+        }
+        .then(userPhoneRepo.findByPhoneNumber(phoneNumber))
 }

@@ -33,32 +33,27 @@ class AuthController {
     private lateinit var crypto: HitCrypto
 
     @PostMapping("phone/register/step/1")
-    fun register(@RequestBody payload: RegisterPhoneRequest) = Mono.create<TokenResponse> {
-        if (payload.phoneNumber.isBlank())
-            it.error(ParamIsRequired("phone should be fill"))
-        else
-            it.success()
-    }
-        .then(userPhoneService.exitsBy(payload.phoneNumber, isConfirmed = true))
-        .handle { t, u ->
-            if (t)
-                u.error(PhoneAlreadyConfirmed())
+    fun register(@RequestBody payload: RegisterPhoneRequest) = Mono
+        .create<TokenResponse> {
+            if (payload.phoneNumber.isBlank())
+                it.error(ParamIsRequired("phone should be fill"))
             else
-                u.next(t)
+                it.success()
         }
         .then(userPhoneService.registerPhone(payload.phoneNumber))
         .map { TokenResponse(it) }
 
     @PostMapping("phone/register/step/2")
-    fun register(@RequestBody payload: ConfirmPhoneRequest) = Mono.create<TokenResponse> {
-        if (payload.token.isBlank())
-            it.error(ParamIsRequired("phone_token should be fill"))
-        else if (payload.code.isBlank())
-            it.error(ParamIsRequired("code should be fill"))
-        else
-            it.success()
-    }
-        .then(userPhoneService.confirmPhoneToken(payload.token, payload.code))
+    fun register(@RequestBody payload: ConfirmPhoneRequest) = Mono
+        .create<TokenResponse> {
+            if (payload.token.isBlank())
+                it.error(ParamIsRequired("phone_token should be fill"))
+            else if (payload.code.isBlank())
+                it.error(ParamIsRequired("code should be fill"))
+            else
+                it.success()
+        }
+        .then(userPhoneService.confirmPhone(payload.token, payload.code))
         .map { TokenResponse(it) }
 
     @PostMapping("phone/register/step/3")
@@ -69,7 +64,7 @@ class AuthController {
             else
                 it.success()
         })
-        .then(userPhoneService.exitsByToken(payload.phoneToken, true))
+        .then(userPhoneService.phoneAlreadyConfirmedByToken(payload.phoneToken))
         .handle { t, u ->
             if (t)
                 u.error(PhoneAlreadyConfirmed())
@@ -86,15 +81,15 @@ class AuthController {
             )
         )
         .flatMap {
-            userPhoneService.attachConfirmPhoneToUser(
-                userEntity = it,
+            userPhoneService.attachPhoneTo(
+                userID = it.id,
                 phoneToken = payload.phoneToken
             )
         }
         .flatMap {
             login(
                 LoginViaPhoneRequest(
-                    phoneNumber = it.first,
+                    phoneNumber = it.phoneNumber,
                     password = payload.password
                 )
             )

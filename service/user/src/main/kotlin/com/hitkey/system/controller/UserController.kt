@@ -56,20 +56,12 @@ class UserController {
 
     @PutMapping("attach/phone")
     fun attachPhone(@RequestBody payload: RegisterPhoneRequest) = userPhoneService
-        .exitsBy(payload.phoneNumber, true)
-        .handle { t, u ->
-            if (t)
-                u.error(PhoneAlreadyConfirmed())
-            else
-                u.next(t)
-        }
-        .then(userPhoneService.attachPhoneToUser(info(), payload.phoneNumber, false))
+        .registerPhoneTo(userID = info().id, payload.phoneNumber)
         .map { TokenResponse(it) }
 
     @PutMapping("attach/phone/confirm")
     fun attachPhone(@RequestBody payload: ConfirmPhoneRequest) = userPhoneService
-        .confirmPhoneToken(payload.token, payload.code)
-        .flatMap { userPhoneService.attachConfirmPhoneToUser(info(), it) }
+        .confirmPhone(payload.token, payload.code)
         .map { true }
 
     @PutMapping("attach/email")
