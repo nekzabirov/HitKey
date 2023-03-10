@@ -39,9 +39,7 @@ class UserPhoneService {
         .create { u ->
             if (phone.isBlank())
                 u.error(WrongPhoneNumberFormat())
-            else if (!phone.startsWith("+"))
-                u.error(WrongPhoneNumberFormat())
-            else if (!phone.replace("+", "").all { it.isDigit() })
+            else if (!Regex("^\\+(?:[0-9]\\●?){6,14}[0-9]\$").matches(phone))
                 u.error(WrongPhoneNumberFormat())
             else
                 u.success(true)
@@ -99,11 +97,11 @@ class UserPhoneService {
         .map { phone ->
             userPhoneRepo.findByPhoneNumber(phone).awaitFirstOrNull()
                 ?.apply {
-                confirmed = true
-            }
+                    confirmed = true
+                }
                 ?.run {
-                userPhoneRepo.save(this).awaitFirst()
-            }
+                    userPhoneRepo.save(this).awaitFirst()
+                }
 
             hitCrypto.generateToken(hashMapOf(Pair("phoneReal", phone)))
         }
@@ -116,7 +114,7 @@ class UserPhoneService {
 
             checkPhone(phoneNumber).then(Mono.just(phoneNumber))
         }
-        .map {phoneNumber ->
+        .map { phoneNumber ->
             UserPhone(
                 phoneNumber = phoneNumber,
                 confirmed = true,
