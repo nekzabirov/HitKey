@@ -27,9 +27,6 @@ class AuthController {
     private lateinit var userPhoneService: UserPhoneService
 
     @Autowired
-    private lateinit var userEmailService: UserEmailService
-
-    @Autowired
     private lateinit var crypto: HitCrypto
 
     @PostMapping("phone/register/step/1")
@@ -95,92 +92,18 @@ class AuthController {
             )
         }
 
-    @PostMapping("email/register/step/1")
-    fun register(@RequestBody payload: RegisterEmailRequest) = Mono.create<TokenResponse> {
-        if (payload.email.isBlank())
-            it.error(ParamIsRequired("email should be fill"))
-        else
-            it.success()
-    }
-        .then(userEmailService.existBy(payload.email, isConfirmed = true))
-        .handle { t, u ->
-            if (t)
-                u.error(EmailAlreadyConfirmed())
-            else
-                u.next(t)
-        }
-        .then(userEmailService.registerEmail(payload.email))
-        .map { TokenResponse(it) }
-
-    @PostMapping("email/register/step/2")
-    fun register(@RequestBody payload: ConfirmEmailRequest) = Mono.create<TokenResponse> {
-        if (payload.token.isBlank())
-            it.error(ParamIsRequired("phone_token should be fill"))
-        else
-            it.success()
-    }
-        .then(userEmailService.confirmEmailToken(payload.token))
-        .map { TokenResponse(it) }
-
-    @PostMapping("email/register/step/3")
-    fun register(@RequestBody payload: RegisterUserRequest.Email) = payload.isFilled
-        .then(Mono.create<TokenResponse> {
-            if (payload.emailToken.isBlank())
-                it.error(ParamIsRequired("email_token is required"))
-            else
-                it.success()
-        })
-        .then(userEmailService.existByToken(payload.emailToken))
-        .handle { t, u ->
-            if (t)
-                u.error(EmailAlreadyConfirmed())
-            else
-                u.next(true)
-        }
-        .then(
-            userService.register(
-                firstName = payload.firstName,
-                lastName = payload.lastName,
-                password = payload.password,
-                gender = payload.gender,
-                birthday = payload.birthday
-            )
-        )
-        .flatMap {
-            userEmailService.confirmEmail(
-                user = it,
-                emailToken = payload.emailToken
-            )
-        }
-        .flatMap {
-            login(LoginViaEmailRequest(email = it.first, password = payload.password))
-        }
-
     @PostMapping("phone/login")
     fun login(@RequestBody payload: LoginViaPhoneRequest) = userPhoneService
         .findConfirmed(payload.phoneNumber)
-        .login(payload.password)
-
-    @PostMapping("email/login")
-    fun login(@RequestBody payload: LoginViaEmailRequest) = userEmailService
-        .findConfirmed(payload.email)
-        .login(payload.password)
-
-    private fun <T : UserContact> Mono<T>.login(password: String) = this
         .switchIfEmpty(Mono.error(FaultLogin()))
         .map { it.ownerID }
-        .publish {
-            userService.findBy(it)
-        }
-        .switchIfEmpty(Mono.error(FaultLogin()))
+        .publish { userService.findBy(it) }
         .handle { t, u ->
-            if (!crypto.matches(password, t.password))
+            if (!crypto.matches(payload.password, t.password))
                 u.error(FaultLogin())
             else
                 u.next(t)
         }
-        .map {
-            crypto.generateAuthToken(it.id)
-        }
+        .map { crypto.generateAuthToken(it.id) }
         .map { TokenResponse(it) }
 }

@@ -3,7 +3,6 @@ package com.hitkey.system.controller
 import com.hitkey.system.controller.rest.*
 import com.hitkey.system.database.entity.user.UserEntity
 import com.hitkey.system.exception.EmailAlreadyConfirmed
-import com.hitkey.system.exception.PhoneAlreadyConfirmed
 import com.hitkey.system.service.FileService
 import com.hitkey.system.service.UserEmailService
 import com.hitkey.system.service.UserPhoneService
@@ -11,7 +10,6 @@ import com.hitkey.system.service.UserService
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.asPublisher
-import kotlinx.coroutines.reactor.awaitSingle
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.security.core.context.SecurityContextHolder
@@ -66,27 +64,16 @@ class UserController {
 
     @PutMapping("attach/email")
     fun attachEmail(@RequestBody payload: RegisterEmailRequest) = userEmailService
-        .existBy(payload.email, true)
-        .handle { t, u ->
-            if (t)
-                u.error(EmailAlreadyConfirmed())
-            else
-                u.next(t)
-        }
-        .then(userEmailService.attachTo(info(), payload.email, false))
+        .attachTo(info().id, payload.email)
         .map { TokenResponse(it) }
 
     @PutMapping("attach/email/confirm")
     fun attachEmailConfirm(@RequestBody payload: ConfirmEmailRequest) = userEmailService
-        .confirmEmailToken(payload.token)
-        .flatMap {
-            userEmailService.confirmEmail(info(), it)
-        }
+        .confirm(payload.token)
         .map { true }
 
     fun info() = SecurityContextHolder
         .getContext()
         .authentication
         .principal as UserEntity
-
 }

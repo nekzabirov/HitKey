@@ -1,13 +1,21 @@
 package com.hitkey.system.service
 
 import com.hitkey.common.component.HitCrypto
+import com.hitkey.common.config.NotFoundException
 import com.hitkey.system.database.entity.user.UserEmail
 import com.hitkey.system.database.entity.user.UserEntity
 import com.hitkey.system.database.repo.UserEmailRepo
+import com.hitkey.system.exception.EmailAlreadyConfirmed
 import com.hitkey.system.exception.TokenExpiredException
+import com.hitkey.system.exception.WrongEmailFormat
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.reactive.asPublisher
+import kotlinx.coroutines.reactive.awaitFirst
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
+import reactor.kotlin.core.publisher.switchIfEmpty
+import reactor.kotlin.core.publisher.toMono
 
 @Service
 class UserEmailService {
@@ -17,93 +25,45 @@ class UserEmailService {
     @Autowired
     private lateinit var hitCrypto: HitCrypto
 
-    fun checkEmailReq(email: String) = Mono.just(true)
+    private fun checkEmail(email: String) = flow {
+        if (!Regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$").matches(email))
+            throw WrongEmailFormat()
 
-    fun registerEmail(email: String) = checkEmailReq(email)
-        .then(
-            Mono.just(hitCrypto.generateToken(
-                hashMapOf(
-                    Pair("email", email)
-                )
-            ))
-        )
+        if (userEmailRepo.existsByEmailAndConfirmed(email, true).awaitFirst())
+            throw EmailAlreadyConfirmed()
 
-    fun confirmEmailToken(emailToken: String) = Mono
-        .just(hitCrypto.validateToken(emailToken))
-        .then(Mono.just(hitCrypto.readClaims(emailToken)))
-        .handle { claims, u ->
-            if (!claims.containsKey("email")) {
-                u.error(TokenExpiredException())
+        emit(true)
+    }.asPublisher().toMono()
 
-                return@handle
-            }
-            val email = claims["email"] as String
-
-            userEmailRepo.confirm(email)
-
-            u.next(hitCrypto.generateToken(hashMapOf(
-                "emailReal" to email
-            )))
-        }
-
-    fun attachTo(user: UserEntity, email: String, isConfirmed: Boolean) = userEmailRepo.findByEmail(email)
-        .defaultIfEmpty(
+    fun attachTo(userID: Long, email: String) = checkEmail(email)
+        .then(userEmailRepo.findByEmail(email))
+        .switchIfEmpty { Mono.just(
             UserEmail(
-            email = email,
-            confirmed = false,
-            ownerID = user.id
-        )
-        )
+                email = email,
+                confirmed = false,
+                ownerID = userID
+            )
+        ) }
         .map {
             it.apply {
-                ownerID = user.id
-                confirmed = isConfirmed
+                ownerID = userID
             }
         }
         .flatMap { userEmailRepo.save(it) }
-        .then(registerEmail(email))
+        .map {
+            hitCrypto.generateToken(
+                hashMapOf(
+                    Pair("emailReal", email)
+                )
+            )
+        }
 
-    fun confirmEmail(user: UserEntity, emailToken: String) = Mono
+    fun confirm(emailToken: String) = Mono
         .just(hitCrypto.validateToken(emailToken))
         .then(Mono.just(hitCrypto.readClaims(emailToken)))
-        .handle { claims, u ->
-            if (!claims.containsKey("emailReal")) {
-                u.error(TokenExpiredException())
-
-                return@handle
-            }
-
-            val email = claims["emailReal"] as String
-
-            u.next(email)
-        }
-        .flatMap { email ->
-            attachTo(user = user, email = email, isConfirmed = true).map {
-                email to it
-            }
-        }
-
-    fun findConfirmed(email: String) = userEmailRepo.findByEmailAndConfirmed(
-        email = email, confirmed = true
-    )
-
-    fun existBy(email: String, isConfirmed: Boolean) = userEmailRepo.existsByEmailAndConfirmed(email, isConfirmed)
-
-    fun existByToken(emailToken: String) = Mono
-        .just(hitCrypto.validateToken(emailToken))
-        .then(Mono.just(hitCrypto.readClaims(emailToken)))
-        .handle { claims, u ->
-            if (!claims.containsKey("emailReal")) {
-                u.error(TokenExpiredException())
-
-                return@handle
-            }
-
-            val email = claims["emailReal"] as String
-
-            u.next(email)
-        }
-        .flatMap { email ->
-            existBy(email, true)
-        }
+        .map { it["emailReal"] as String }
+        .flatMap { email -> userEmailRepo.findByEmail(email) }
+        .switchIfEmpty { Mono.error(NotFoundException()) }
+        .map { it.apply { confirmed = true } }
+        .flatMap { userEmailRepo.save(it) }
 }
