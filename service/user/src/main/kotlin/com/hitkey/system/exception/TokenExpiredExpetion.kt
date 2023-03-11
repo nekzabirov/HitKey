@@ -12,6 +12,8 @@ class TokenExpiredException: RuntimeException()
 
 class WrongPhoneNumberFormat: RuntimeException()
 
+class WrongEmailFormat: RuntimeException()
+
 class FaultPhoneConfirm: RuntimeException()
 
 class PhoneAlreadyConfirmed: RuntimeException()
@@ -29,6 +31,11 @@ class RestExceptionHandler {
     @ExceptionHandler(WrongPhoneNumberFormat::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun wrongPhoneFormat(ex: WrongPhoneNumberFormat) = HitResponse.Error("Wrong phone number format")
+
+    @ResponseBody
+    @ExceptionHandler(WrongEmailFormat::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun wrongEmailFormat(ex: WrongEmailFormat) = HitResponse.Error("Wrong email format")
 
     @ResponseBody
     @ExceptionHandler(TokenExpiredException::class)

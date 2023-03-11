@@ -1,7 +1,7 @@
-package com.hitkey.develop.config
+package com.hitkey.file.config
 
-import com.hitkey.develop.component.AuthenticationManager
-import com.hitkey.develop.component.SecurityContextRepository
+import com.hitkey.file.component.AuthenticationManager
+import com.hitkey.file.component.SecurityContextRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -42,7 +42,6 @@ class WebSecurityConfig {
         .authenticationManager(authenticationManager)
         .securityContextRepository(securityContextRepository)
         .authorizeExchange()
-        .pathMatchers("/app/*/info").permitAll()
         .anyExchange().authenticated()
         .and()
         .build()

@@ -13,10 +13,15 @@ import com.hitkey.system.database.repo.UserEmailRepo
 import com.hitkey.system.database.repo.UserPhoneRepo
 import com.hitkey.system.database.repo.UserRepo
 import com.hitkey.system.exception.UserNotFound
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.reactive.asFlow
+import kotlinx.coroutines.reactive.asPublisher
+import kotlinx.coroutines.reactive.awaitSingle
 import org.reactivestreams.Publisher
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
+import reactor.kotlin.core.publisher.toMono
 import java.time.LocalDate
 
 @Service
@@ -33,12 +38,6 @@ class UserService {
     @Autowired
     private lateinit var crypto: HitCrypto
 
-    @Autowired
-    private lateinit var userAvatarRepo: UserAvatarRepo
-
-    @Autowired
-    private lateinit var fileService: FileService
-
     fun register(
         firstName: String, lastName: String, birthday: LocalDate, gender: UserGender, password: String
     ) = UserEntity(
@@ -53,8 +52,7 @@ class UserService {
 
     fun findBy(id: Long) = Mono.zip(
         userPhoneRepo.findByOwnerID(id).collectList(),
-        userEmailRepo.findByOwnerID(id).collectList(),
-        userAvatarRepo.findAllByOwnerID(id).collectList()
+        userEmailRepo.findByOwnerID(id).collectList()
     ).flatMap { contacts ->
         userRepo
             .findById(id)
@@ -85,33 +83,19 @@ class UserService {
                         )
                     },
 
-                    avatar = contacts.t3.map {
-                        UserAvatarDTO(
-                            fileID = it.fileID,
-                            primary = it.active
-                        )
-                    }
+                    avatar = user.avatar
                 )
             }
     }
 
-    fun addAvatarForUser(userID: Long, image: String) = findBy(userID)
-        .switchIfEmpty(Mono.error(UserNotFound()))
-        .then(userAvatarRepo.disPrimaryBy(userID))
-        .then(fileService.addUserFile(image))
-        .map {
-            UserAvatar(
-                fileID = it.data as String,
-                active = true,
-                ownerID = userID
-            )
-        }
-        .flatMap {
-            userAvatarRepo.save(it)
-        }
-
-    fun update(userID: Long, firstName: String?, lastName: String?, birthday: LocalDate?, gender: UserGender?) =
-        userRepo
+    fun update(
+        userID: Long,
+        firstName: String?,
+        lastName: String?,
+        birthday: LocalDate?,
+        gender: UserGender?,
+        avatarID: String?
+    ) = userRepo
             .findById(userID)
             .map {
                 it.apply {
@@ -123,6 +107,8 @@ class UserService {
                         this.birthday = birthday
                     if (gender != null)
                         this.gender = gender
+                    if (avatarID != null)
+                        this.avatar = avatarID
                 }
             }
             .flatMap {

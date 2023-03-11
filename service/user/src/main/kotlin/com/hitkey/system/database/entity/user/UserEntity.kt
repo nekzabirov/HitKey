@@ -29,4 +29,6 @@ data class UserEntity(
 
     @Embedded(onEmpty = Embedded.OnEmpty.USE_EMPTY)
     val role: Role = Role.USER,
+
+    var avatar: String? = null
 ): BaseEntity()

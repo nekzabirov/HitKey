@@ -1,0 +1,2 @@
+ALTER TABLE user_data
+    ADD COLUMN IF NOT EXISTS avatar VARCHAR(255);
