@@ -20,6 +20,11 @@ class RestHandler {
     fun nnAuthorizedException(ex: UnAuthorizedException) = HitResponse.Error("unauthorized")
 
     @ResponseBody
+    @ExceptionHandler(NotPermitted::class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    fun notPermittedException(ex: NotPermitted) = HitResponse.Error("not permitted")
+
+    @ResponseBody
     @ExceptionHandler(ParamIsRequired::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun paramIsRequired(ex: ParamIsRequired) = HitResponse.Error(ex.message)
