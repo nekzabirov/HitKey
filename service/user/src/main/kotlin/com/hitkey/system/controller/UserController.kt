@@ -11,10 +11,12 @@ import com.hitkey.system.service.UserPhoneService
 import com.hitkey.system.service.UserService
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.publish
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.asPublisher
 import kotlinx.coroutines.reactive.awaitFirst
+import kotlinx.coroutines.reactive.awaitSingle
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.security.core.context.SecurityContextHolder
@@ -58,30 +60,35 @@ class UserController {
 
             it.success(true)
         }
-        .then(mInfo())
-        .flatMap {
-            if (payload.avatar != null)
-                Mono.zip(
-                    fileService.saveImage(it.id, payload.avatar),
-                    if (mUser.avatar != null) fileService.removeImage(mUser.id, mUser.avatar!!)
-                    else Mono.just(true)
-                ).map { f -> f.t1 }
-            else
-                Mono.just("")
-        }
-        .flatMap {
+        .asFlow()
+        .map {
+            val user = mInfo().awaitSingle()
+
+            val avatarID = if (payload.avatar != null) {
+                val avatarID = fileService.saveImage(user.id, payload.avatar).awaitSingle()
+
+                if (user.avatar != null)
+                    fileService.removeImage(user.id, user.avatar!!).awaitFirst()
+
+                avatarID
+            } else
+                user.avatar
+
+
             userService.update(
-                userID = mUser.id,
+                userID = user.id,
                 firstName = payload.firstName,
                 lastName = payload.lastName,
                 birthday = payload.birthday,
                 gender = payload.gender,
-                avatarID = if (it.isNullOrEmpty()) null else it
-            )
+                avatarID = avatarID
+            ).awaitSingle()
+
+            true
         }
-        .flatMap {
-            mInfo()
-        }
+        .asPublisher()
+        .toMono()
+        .then(mInfo())
 
     @PostMapping("attach/phone")
     fun attachPhone(@RequestBody payload: RegisterPhoneRequest) = userPhoneService
