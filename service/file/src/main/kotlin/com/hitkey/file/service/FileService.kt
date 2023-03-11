@@ -29,7 +29,7 @@ class FileService {
         .map { Date().toString() }
         .map { it: String ->
             val s: String = Base64.getEncoder().encodeToString(it.toByteArray())
-            File(rootFileDir, "$directory/$s")
+            File(rootFileDir, "$directory/${s}.$userID")
         }
         .publishOn(Schedulers.boundedElastic())
         .handle { t, u ->
@@ -42,12 +42,12 @@ class FileService {
 
             t.outputStream().write(buffer)
 
-            val view: UserDefinedFileAttributeView = Files.getFileAttributeView(
+            /*val view: UserDefinedFileAttributeView = Files.getFileAttributeView(
                 t.toPath(),
                 UserDefinedFileAttributeView::class.java
             )
 
-            view.write("user.id", StandardCharsets.UTF_8.encode(userID.toString()));
+            view.write("user.id", StandardCharsets.UTF_8.encode(userID.toString()));*/
 
             u.next(t.name)
         }
@@ -75,12 +75,17 @@ class FileService {
                 it.success(file)
         }
         .handle { file, u ->
-            val view = Files.getFileAttributeView(
+            /*val view = Files.getFileAttributeView(
                 file.toPath(),
                 UserDefinedFileAttributeView::class.java
             )
 
             if (view.readUserID().toLong() != userID) {
+                u.error(NotPermitted())
+                return@handle
+            }*/
+
+            if (file.extension.toLong() != userID) {
                 u.error(NotPermitted())
                 return@handle
             }
