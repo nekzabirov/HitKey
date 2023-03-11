@@ -42,7 +42,6 @@ class WebSecurityConfig {
         .authenticationManager(authenticationManager)
         .securityContextRepository(securityContextRepository)
         .authorizeExchange()
-        .pathMatchers("/app/*/info").permitAll()
         .anyExchange().authenticated()
         .and()
         .build()

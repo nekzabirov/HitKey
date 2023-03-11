@@ -21,17 +21,11 @@ import java.util.*
 class FileService {
     private val rootFileDir = File("/app/files")
 
-    private val user
-        get() = SecurityContextHolder
-            .getContext()
-            .authentication
-            .principal as UserDTO
-
-    fun saveFile(buffer: Mono<ByteArray>, directory: String) = buffer.flatMap {
-        saveFile(it, directory)
+    fun saveFile(userID: Long, buffer: Mono<ByteArray>, directory: String) = buffer.flatMap {
+        saveFile(userID, it, directory)
     }
 
-    fun saveFile(buffer: ByteArray, directory: String) = createDirectory(directory)
+    fun saveFile(userID: Long, buffer: ByteArray, directory: String) = createDirectory(directory)
         .map { Date().toString() }
         .map { it: String ->
             val s: String = Base64.getEncoder().encodeToString(it.toByteArray())
@@ -53,7 +47,7 @@ class FileService {
                 UserDefinedFileAttributeView::class.java
             )
 
-            view.write("user.id", java.nio.charset.StandardCharsets.UTF_8.encode(user.id.toString()));
+            view.write("user.id", StandardCharsets.UTF_8.encode(userID.toString()));
 
             u.next(t.name)
         }
@@ -71,7 +65,7 @@ class FileService {
             it.readBytes()
         }
 
-    fun removeFile(directory: String, name: String) = Mono
+    fun removeFile(userID: Long, directory: String, name: String) = Mono
         .create {
             val file = File(rootFileDir, "$directory/$name")
 
@@ -86,7 +80,7 @@ class FileService {
                 UserDefinedFileAttributeView::class.java
             )
 
-            if (view.readUserID().toLong() != user.id) {
+            if (view.readUserID().toLong() != userID) {
                 u.error(NotPermitted())
                 return@handle
             }

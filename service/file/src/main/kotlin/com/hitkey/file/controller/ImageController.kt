@@ -30,7 +30,7 @@ class ImageController {
                 it.success("")
         }
         .map { Base64.getDecoder().decode(payload.file) }
-        .publish { fileService.saveFile(it, FILE_DIR) }
+        .publish { fileService.saveFile(user.id, it, FILE_DIR) }
 
     @GetMapping("{id}", produces = [MediaType.APPLICATION_OCTET_STREAM_VALUE])
     fun image(@PathVariable id: String) = fileService.readFile(
@@ -40,7 +40,14 @@ class ImageController {
 
     @DeleteMapping("{id}")
     fun delete(@PathVariable id: String) = fileService.removeFile(
+        user.id,
         FILE_DIR,
         id
     )
+
+    private val user
+        get() = SecurityContextHolder
+            .getContext()
+            .authentication
+            .principal as UserDTO
 }
