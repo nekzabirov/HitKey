@@ -3,6 +3,7 @@ package com.hitkey.system.service
 import com.hitkey.common.component.HitCrypto
 import com.hitkey.common.data.HitResponse
 import com.hitkey.common.config.NotFoundException
+import com.hitkey.common.config.ParamIsRequired
 import com.hitkey.system.database.entity.user.UserEntity
 import com.netflix.discovery.EurekaClient
 import org.apache.commons.codec.digest.Crypt
@@ -38,6 +39,10 @@ class FileService(private val webClientBuilder: WebClient.Builder) {
         }
         .bodyValue(FileRequest(fileBase64))
         .retrieve()
+        .onStatus(
+            { status -> status != HttpStatus.OK },
+            { _ -> Mono.error(ParamIsRequired("Error to save file")) }
+        )
         .bodyToMono<HitResponse.OK<String>>()
         .mapNotNull { it.data }
 
