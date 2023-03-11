@@ -52,6 +52,8 @@ class UserController {
         else
             null
 
+        val lastAvatarID = mUser.avatar
+
         userService.update(
             userID = mUser.id,
             firstName = payload.firstName,
@@ -60,6 +62,9 @@ class UserController {
             gender = payload.gender,
             avatarID = avatarID
         ).awaitFirst()
+
+        if (avatarID != null && lastAvatarID != null)
+            fileService.removeImage(lastAvatarID).awaitFirst()
 
         emit(mInfo().awaitFirst())
     }

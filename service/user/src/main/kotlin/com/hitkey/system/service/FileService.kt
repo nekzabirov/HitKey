@@ -41,6 +41,15 @@ class FileService(private val webClientBuilder: WebClient.Builder) {
         .bodyToMono<HitResponse.OK<String>>()
         .mapNotNull { it.data }
 
+    fun removeImage(fileID: String) = webClient.delete()
+        .uri("image/$fileID")
+        .headers {
+            it[HttpHeaders.AUTHORIZATION] = "Bearer ${crypt.generateAuthToken(mUser.id)}"
+        }
+        .retrieve()
+        .bodyToMono<HitResponse.OK<String>>()
+        .mapNotNull { it.data }
+
     private val mUser
         get() = SecurityContextHolder
             .getContext()
