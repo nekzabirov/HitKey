@@ -91,26 +91,6 @@ class UserService {
             }
     }
 
-    fun addAvatarForUser(userID: Long, image: String) = userRepo
-        .findById(userID)
-        .switchIfEmpty(Mono.error(UserNotFound()))
-        .asFlow()
-        .map {
-            val fileID = fileService.addUserFile(image).awaitSingle().data
-
-            it.apply {
-                avatar = fileID
-            }
-        }
-        .asPublisher()
-        .toMono()
-        .flatMap {
-            userRepo.save(it)
-        }
-        .map {
-            true
-        }
-
     fun update(
         userID: Long,
         firstName: String?,
