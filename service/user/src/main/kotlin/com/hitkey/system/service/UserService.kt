@@ -38,9 +38,6 @@ class UserService {
     @Autowired
     private lateinit var crypto: HitCrypto
 
-    @Autowired
-    private lateinit var fileService: FileService
-
     fun register(
         firstName: String, lastName: String, birthday: LocalDate, gender: UserGender, password: String
     ) = UserEntity(
