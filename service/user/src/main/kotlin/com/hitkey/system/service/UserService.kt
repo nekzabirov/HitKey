@@ -116,7 +116,8 @@ class UserService {
         firstName: String?,
         lastName: String?,
         birthday: LocalDate?,
-        gender: UserGender?
+        gender: UserGender?,
+        avatarID: String?
     ) = userRepo
             .findById(userID)
             .map {
@@ -129,6 +130,8 @@ class UserService {
                         this.birthday = birthday
                     if (gender != null)
                         this.gender = gender
+                    if (avatarID != null)
+                        this.avatar = avatarID
                 }
             }
             .flatMap {

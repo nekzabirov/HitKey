@@ -8,8 +8,11 @@ import com.hitkey.system.service.UserEmailService
 import com.hitkey.system.service.UserPhoneService
 import com.hitkey.system.service.UserService
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.publish
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.asPublisher
+import kotlinx.coroutines.reactive.awaitFirst
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.security.core.context.SecurityContextHolder
@@ -32,29 +35,40 @@ class UserController {
     @Autowired
     private lateinit var userEmailService: UserEmailService
 
+    private val mUser
+        get() = SecurityContextHolder
+            .getContext()
+            .authentication
+            .principal as UserEntity
+
     @GetMapping("info")
     fun mInfo() = userService
-        .findBy(info().id)
+        .findBy(mUser.id)
 
     @PutMapping("update")
-    fun update(@RequestBody payload: UserUpdateRequest) = userService.update(info().id,
+    fun update(@RequestBody payload: UserUpdateRequest) = flow {
+        val avatarID = if (payload.avatar != null)
+            fileService.saveImage(payload.avatar).awaitFirst()
+        else
+            null
+
+        userService.update(
+            userID = mUser.id,
             firstName = payload.firstName,
             lastName = payload.lastName,
             birthday = payload.birthday,
-            gender = payload.gender
-        ).then(Mono.just(true)).asFlow().combine(
-            if (payload.avatar != null) userService.addAvatarForUser(info().id, payload.avatar).asFlow()
-            else Mono.just(true).asFlow()
-        ) { _, _ ->
-            true
-        }.asPublisher().toMono()
+            gender = payload.gender,
+            avatarID = avatarID
+        ).awaitFirst()
 
-    @GetMapping("image/{fileID}", produces = [MediaType.IMAGE_JPEG_VALUE])
-    fun image(@PathVariable fileID: String) = fileService.findUserFile(fileID)
+        emit(mInfo().awaitFirst())
+    }
+        .asPublisher()
+        .toMono()
 
     @PutMapping("attach/phone")
     fun attachPhone(@RequestBody payload: RegisterPhoneRequest) = userPhoneService
-        .attachTo(userID = info().id, payload.phoneNumber)
+        .attachTo(userID = mUser.id, payload.phoneNumber)
         .map { TokenResponse(it) }
 
     @PutMapping("attach/phone/confirm")
@@ -64,16 +78,11 @@ class UserController {
 
     @PutMapping("attach/email")
     fun attachEmail(@RequestBody payload: RegisterEmailRequest) = userEmailService
-        .attachTo(info().id, payload.email)
+        .attachTo(mUser.id, payload.email)
         .map { TokenResponse(it) }
 
     @PutMapping("attach/email/confirm")
     fun attachEmailConfirm(@RequestBody payload: ConfirmEmailRequest) = userEmailService
         .confirm(payload.token)
         .map { true }
-
-    fun info() = SecurityContextHolder
-        .getContext()
-        .authentication
-        .principal as UserEntity
 }
