@@ -20,6 +20,7 @@ class UserService(private val webClientBuilder: WebClient.Builder) {
         .retrieve()
         .bodyToMono<HitResponse.OK<UserDTO>>()
         .onErrorResume {
+            it.printStackTrace()
             Mono.error(UnAuthorizedException())
         }
         .mapNotNull {
