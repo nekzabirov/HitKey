@@ -13,18 +13,13 @@ import reactor.core.publisher.Mono
 @Service
 class UserService(private val webClientBuilder: WebClient.Builder) {
     fun userBy(token: String) = webClientBuilder.build().get()
-        .uri("http://USER/api/v1/user/info")
+        .uri("http://USER/api/v1/user")
         .headers {
             it.set(HttpHeaders.AUTHORIZATION, "Bearer $token")
         }
         .retrieve()
-        .onStatus(
-            { status -> status.value() == HttpStatus.UNAUTHORIZED.value() },
-            { _ -> Mono.error(UnAuthorizedException()) }
-        )
         .bodyToMono<HitResponse.OK<UserDTO>>()
         .onErrorResume {
-            it.printStackTrace()
             Mono.error(UnAuthorizedException())
         }
         .mapNotNull {
