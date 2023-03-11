@@ -1,22 +1,17 @@
 package com.hitkey.system
 
 import io.r2dbc.spi.ConnectionFactory
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient
-import org.springframework.cloud.client.loadbalancer.LoadBalanced
 import org.springframework.context.annotation.Bean
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.data.r2dbc.config.EnableR2dbcAuditing
 import org.springframework.data.r2dbc.repository.config.EnableR2dbcRepositories
-import org.springframework.http.codec.ServerCodecConfigurer
 import org.springframework.r2dbc.connection.init.ConnectionFactoryInitializer
 import org.springframework.r2dbc.connection.init.ResourceDatabasePopulator
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
-import org.springframework.web.client.RestTemplate
-import org.springframework.web.reactive.accept.RequestedContentTypeResolver
 import org.springframework.web.reactive.config.EnableWebFlux
 
 
@@ -25,7 +20,7 @@ import org.springframework.web.reactive.config.EnableWebFlux
 @EnableR2dbcRepositories
 @EnableDiscoveryClient
 @EnableWebFlux
-class ReaativeApplication {
+class UserApplication {
     @Bean
     fun passwordEncoder(): PasswordEncoder {
         return BCryptPasswordEncoder()
@@ -58,5 +53,5 @@ class ReaativeApplication {
 }
 
 fun main(args: Array<String>) {
-    runApplication<ReaativeApplication>(*args)
+    runApplication<UserApplication>(*args)
 }
