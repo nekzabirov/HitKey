@@ -61,7 +61,11 @@ class UserController {
         .then(mInfo())
         .flatMap {
             if (payload.avatar != null)
-                fileService.saveImage(it.id, payload.avatar)
+                Mono.zip(
+                    fileService.saveImage(it.id, payload.avatar),
+                    if (mUser.avatar != null) fileService.removeImage(mUser.id, mUser.avatar!!)
+                    else Mono.just(true)
+                ).map { f -> f.t1 }
             else
                 Mono.just("")
         }
@@ -74,12 +78,6 @@ class UserController {
                 gender = payload.gender,
                 avatarID = if (it.isNullOrEmpty()) null else it
             )
-        }
-        .flatMap {
-            if (it.avatar != mUser.avatar && mUser.avatar != null)
-                fileService.removeImage(mUser.id, mUser.avatar!!)
-            else
-                Mono.just(true)
         }
         .flatMap {
             mInfo()
