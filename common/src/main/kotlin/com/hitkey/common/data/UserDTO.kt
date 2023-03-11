@@ -39,7 +39,5 @@ data class UserDTO(
 
     val phones: List<UserPhoneDTO> = emptyList(),
 
-    val emails: List<UserEmailDTO> = emptyList(),
-
-    val avatar: List<UserAvatarDTO> = emptyList()
+    val emails: List<UserEmailDTO> = emptyList()
 )
