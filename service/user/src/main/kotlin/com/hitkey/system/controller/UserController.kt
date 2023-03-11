@@ -48,7 +48,7 @@ class UserController {
     @PutMapping("update")
     fun update(@RequestBody payload: UserUpdateRequest) = flow {
         val avatarID = if (payload.avatar != null)
-            fileService.saveImage(payload.avatar).awaitFirst()
+            fileService.saveImage(mUser.id, payload.avatar).awaitFirst()
         else
             null
 
@@ -64,7 +64,7 @@ class UserController {
         ).awaitFirst()
 
         if (avatarID != null && lastAvatarID != null)
-            fileService.removeImage(lastAvatarID).awaitFirst()
+            fileService.removeImage(mUser.id, lastAvatarID).awaitFirst()
 
         emit(mInfo().awaitFirst())
     }

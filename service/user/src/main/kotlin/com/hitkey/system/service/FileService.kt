@@ -30,29 +30,23 @@ class FileService(private val webClientBuilder: WebClient.Builder) {
             .baseUrl("http://FILE/api/v1/")
             .build()
 
-    fun saveImage(fileBase64: String) = webClient.post()
+    fun saveImage(userID: Long, fileBase64: String) = webClient.post()
         .uri("image/save")
         .contentType(MediaType.APPLICATION_JSON)
         .headers {
-            it[HttpHeaders.AUTHORIZATION] = "Bearer ${crypt.generateAuthToken(mUser.id)}"
+            it[HttpHeaders.AUTHORIZATION] = "Bearer ${crypt.generateAuthToken(userID)}"
         }
         .bodyValue(FileRequest(fileBase64))
         .retrieve()
         .bodyToMono<HitResponse.OK<String>>()
         .mapNotNull { it.data }
 
-    fun removeImage(fileID: String) = webClient.delete()
+    fun removeImage(userID: Long, fileID: String) = webClient.delete()
         .uri("image/$fileID")
         .headers {
-            it[HttpHeaders.AUTHORIZATION] = "Bearer ${crypt.generateAuthToken(mUser.id)}"
+            it[HttpHeaders.AUTHORIZATION] = "Bearer ${crypt.generateAuthToken(userID)}"
         }
         .retrieve()
         .bodyToMono<HitResponse.OK<String>>()
         .mapNotNull { it.data }
-
-    private val mUser
-        get() = SecurityContextHolder
-            .getContext()
-            .authentication
-            .principal as UserEntity
 }
