@@ -1,5 +1,7 @@
 package com.hitkey.system.controller
 
+import com.hitkey.common.config.ParamIsRequired
+import com.hitkey.common.data.UserDTO
 import com.hitkey.system.controller.rest.*
 import com.hitkey.system.database.entity.user.UserEntity
 import com.hitkey.system.exception.EmailAlreadyConfirmed
@@ -41,52 +43,64 @@ class UserController {
             .authentication
             .principal as UserEntity
 
-    @GetMapping("info")
-    fun mInfo() = userService
-        .findBy(mUser.id)
+    @GetMapping
+    fun mInfo() = userService.findBy(mUser.id)
 
-    @PutMapping("update")
-    fun update(@RequestBody payload: UserUpdateRequest) = flow {
-        val avatarID = if (payload.avatar != null)
-            fileService.saveImage(mUser.id, payload.avatar).awaitFirst()
-        else
-            null
+    @PutMapping
+    fun updateN(@RequestBody payload: UserUpdateRequest) = Mono
+        .create {
+            if (payload.firstName != null && payload.firstName.isBlank())
+                it.error(ParamIsRequired("firstName should be fill"))
+            else if (payload.lastName != null && payload.lastName.isBlank())
+                it.error(ParamIsRequired("lastName should be fill"))
+            else if (payload.avatar != null && payload.avatar.isBlank())
+                it.error(ParamIsRequired("lastName should be fill"))
 
-        val lastAvatarID = mUser.avatar
+            it.success(true)
+        }
+        .then(mInfo())
+        .flatMap {
+            if (payload.avatar != null)
+                fileService.saveImage(it.id, payload.avatar)
+            else
+                Mono.just("")
+        }
+        .flatMap {
+            userService.update(
+                userID = mUser.id,
+                firstName = payload.firstName,
+                lastName = payload.lastName,
+                birthday = payload.birthday,
+                gender = payload.gender,
+                avatarID = if (it.isNullOrEmpty()) null else it
+            )
+        }
+        .flatMap {
+            if (it.avatar != mUser.avatar && mUser.avatar != null)
+                fileService.removeImage(mUser.id, mUser.avatar!!)
+            else
+                Mono.just(true)
+        }
+        .flatMap {
+            mInfo()
+        }
 
-        userService.update(
-            userID = mUser.id,
-            firstName = payload.firstName,
-            lastName = payload.lastName,
-            birthday = payload.birthday,
-            gender = payload.gender,
-            avatarID = avatarID
-        ).awaitFirst()
-
-        if (avatarID != null && lastAvatarID != null)
-            fileService.removeImage(mUser.id, lastAvatarID).awaitFirst()
-
-        emit(mInfo().awaitFirst())
-    }
-        .asPublisher()
-        .toMono()
-
-    @PutMapping("attach/phone")
+    @PostMapping("attach/phone")
     fun attachPhone(@RequestBody payload: RegisterPhoneRequest) = userPhoneService
         .attachTo(userID = mUser.id, payload.phoneNumber)
         .map { TokenResponse(it) }
 
-    @PutMapping("attach/phone/confirm")
+    @PostMapping("attach/phone/confirm")
     fun conformPhone(@RequestBody payload: ConfirmPhoneRequest) = userPhoneService
         .confirm(payload.token, payload.code)
         .map { true }
 
-    @PutMapping("attach/email")
+    @PostMapping("attach/email")
     fun attachEmail(@RequestBody payload: RegisterEmailRequest) = userEmailService
         .attachTo(mUser.id, payload.email)
         .map { TokenResponse(it) }
 
-    @PutMapping("attach/email/confirm")
+    @PostMapping("attach/email/confirm")
     fun attachEmailConfirm(@RequestBody payload: ConfirmEmailRequest) = userEmailService
         .confirm(payload.token)
         .map { true }

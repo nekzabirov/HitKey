@@ -47,6 +47,6 @@ class FileService(private val webClientBuilder: WebClient.Builder) {
             it[HttpHeaders.AUTHORIZATION] = "Bearer ${crypt.generateAuthToken(userID)}"
         }
         .retrieve()
-        .bodyToMono<HitResponse.OK<String>>()
+        .bodyToMono<HitResponse.OK<Boolean>>()
         .mapNotNull { it.data }
 }
